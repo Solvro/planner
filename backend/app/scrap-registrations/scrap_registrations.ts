@@ -1,8 +1,6 @@
 import * as cheerio from "cheerio";
 
-import logger from "@adonisjs/core/services/logger";
-
-interface GroupDetails {
+export interface ScrapedGroupSummary {
   name: string;
   type: string;
   group: string;
@@ -12,27 +10,27 @@ interface GroupDetails {
   endTime: string;
   lecturer: string;
 }
-interface Group {
+export interface ScrapedGroup {
   url: string;
-  groups: GroupDetails[];
+  groups: ScrapedGroupSummary[];
 }
 
-interface Course {
+export interface ScrapedCourse {
   name: string;
   courseCode: string;
   url: string;
-  groups: Group[];
+  groups: ScrapedGroup[];
 }
-interface Registration {
+export interface ScrapedRegistration {
   name: string;
   url: string;
-  courses: Course[];
+  courses: ScrapedCourse[];
 }
 
-interface Department {
+export interface ScrapedDepartment {
   name: string;
   url: string;
-  registrations: Registration[];
+  registrations: ScrapedRegistration[];
 }
 
 const DEPARTMENTS_URL =
@@ -57,12 +55,13 @@ async function fetchData(url: string, options = {}, timeout = 10000) {
   }
 }
 
-const scrapDepartments = async () => {
-  const departments: Department[] = [];
+export async function scrapDepartments(): Promise<ScrapedDepartment[]> {
+  const departments: ScrapedDepartment[] = [];
   const response = await fetchData(DEPARTMENTS_URL);
   if (!response.ok) {
-    logger.info("Something went wrong in fetching departments");
-    return;
+    throw new Error(
+      `Got response code ${response.status} ${response.statusText} while fetching departments`,
+    );
   }
   const body = await response.text();
   const $ = cheerio.load(body);
@@ -71,7 +70,7 @@ const scrapDepartments = async () => {
     .find(".autostrong")
     .children("tr");
   departmentsBlock.each((_, element) => {
-    const newDepartment: Department = {
+    const newDepartment: ScrapedDepartment = {
       name: "",
       url: "",
       registrations: [],
@@ -87,15 +86,18 @@ const scrapDepartments = async () => {
     departments.push(newDepartment);
   });
   return departments;
-};
+}
 
-const scrapRegistrations = async (departmentUrl: string) => {
+export async function scrapRegistrations(
+  departmentUrl: string,
+): Promise<ScrapedRegistration[]> {
   const registrationsNames: string[] = [];
   const registrationsUrls: string[] = [];
   const response = await fetchData(departmentUrl);
   if (!response.ok) {
-    logger.info("Something went wrong in fetching registrations");
-    return;
+    throw new Error(
+      `Got reponse code ${response.status} ${response.statusText} while fetching registrations`,
+    );
   }
   const body = await response.text();
   const $ = cheerio.load(body);
@@ -115,16 +117,21 @@ const scrapRegistrations = async (departmentUrl: string) => {
     }
   });
   return registrationsNames.map((name, index) => {
-    return { name, url: registrationsUrls[index], courses: [] as Course[] };
+    return {
+      name,
+      url: registrationsUrls[index],
+      courses: [],
+    };
   });
-};
+}
 
-const scrapCourses = async (registrationUrl: string) => {
+export async function scrapCourses(registrationUrl: string): Promise<string[]> {
   const coursesUrls: string[] = [];
   const response = await fetchData(registrationUrl);
   if (!response.ok) {
-    logger.info("Something went wrong in fetching courses");
-    return;
+    throw new Error(
+      `Got response code ${response.status} ${response.statusText} while fetching courses`,
+    );
   }
 
   const body = await response.text();
@@ -142,16 +149,25 @@ const scrapCourses = async (registrationUrl: string) => {
     }
   });
   return coursesUrls;
-};
+}
 
-const scrapCourseNameGroupsUrls = async (courseUrl: string) => {
+export interface ScrapedCourseDetails {
+  courseName: string;
+  courseCode: string;
+  urls: string[];
+}
+
+export async function scrapCourseNameGroupsUrls(
+  courseUrl: string,
+): Promise<ScrapedCourseDetails> {
   let courseName = "";
   const urls: string[] = [];
   let courseCode = "";
   const response = await fetchData(courseUrl);
   if (!response.ok) {
-    logger.info("Something went wrong in fetching groups");
-    return;
+    throw new Error(
+      `Got response code ${response.status} ${response.statusText} while fetching course details`,
+    );
   }
 
   const body = await response.text();
@@ -186,14 +202,15 @@ const scrapCourseNameGroupsUrls = async (courseUrl: string) => {
     }
   });
   return { courseName, urls, courseCode };
-};
+}
 
-const scrapGroupsUrls = async (groupUrl: string) => {
+export async function scrapGroupsUrls(groupUrl: string): Promise<string[]> {
   const groupsUrls: string[] = [];
   const response = await fetchData(groupUrl);
   if (!response.ok) {
-    logger.info("Something went wrong in fetching groups");
-    return;
+    throw new Error(
+      `Got response code ${response.status} ${response.statusText} while fetching group URLs`,
+    );
   }
 
   const body = await response.text();
@@ -207,13 +224,28 @@ const scrapGroupsUrls = async (groupUrl: string) => {
     }
   });
   return groupsUrls;
-};
+}
 
-const scrapGroupDetails = async (groupUrl: string) => {
+export interface ScrapedGroupDetails {
+  name: string;
+  type: string;
+  group: string;
+  week: string;
+  days: string[];
+  startTimeEndTimes: { startTime: string; endTime: string }[];
+  lecturer: string;
+  spotsOccupied: number;
+  spotsTotal: number;
+}
+
+export async function scrapGroupDetails(
+  groupUrl: string,
+): Promise<ScrapedGroupDetails> {
   const response = await fetchData(groupUrl);
   if (!response.ok) {
-    logger.info("Something went wrong in fetching groups");
-    return;
+    throw new Error(
+      `Got response code ${response.status} ${response.statusText} while fetching group details`,
+    );
   }
 
   const body = await response.text();
@@ -296,7 +328,7 @@ const scrapGroupDetails = async (groupUrl: string) => {
     spotsOccupied: Number.isNaN(spotsOccupiedNumber) ? 0 : spotsOccupiedNumber,
     spotsTotal: Number.isNaN(spotsTotalNumber) ? 0 : spotsTotalNumber,
   };
-};
+}
 
 const getStartEndTime = (time: string) => {
   if (time.includes("brak danych")) {
@@ -364,13 +396,4 @@ const checkDay = (day: string) => {
     return "niedziela";
   }
   return "unknown";
-};
-
-export {
-  scrapDepartments,
-  scrapRegistrations,
-  scrapCourses,
-  scrapCourseNameGroupsUrls,
-  scrapGroupsUrls,
-  scrapGroupDetails,
 };
