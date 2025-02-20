@@ -67,7 +67,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@solvro/config": "^1.13.3",
+    "@solvro/config": "^1.13.4",
     "@types/crypto-js": "^4.2.2",
     "@types/node": "^20.17.10",
     "@types/react": "^18.3.17",
