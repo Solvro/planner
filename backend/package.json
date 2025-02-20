@@ -67,7 +67,7 @@
     "@japa/assert": "^3.0.0",
     "@japa/plugin-adonisjs": "^3.0.1",
     "@japa/runner": "^3.1.4",
-    "@solvro/config": "^1.13.3",
+    "@solvro/config": "^1.13.4",
     "@swc/core": "^1.7.22",
     "@types/luxon": "^3.4.2",
     "@types/node": "^22.5.1",
